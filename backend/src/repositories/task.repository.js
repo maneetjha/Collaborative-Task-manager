@@ -1,28 +1,38 @@
-const { TodoModel } = require("../models/task");
+const TaskModel  = require("../models/task.model");
 
 class TaskRepository {
     async create(taskData) {
-        return await TodoModel.create(taskData);
+        return await TaskModel.create(taskData);
     }
-//todo pagination
+    //todo pagination
     async findByUserId(userId, filters = {}, sortBy = { dueDate: 1 }) {
         const query = { 
-            $or: [{ userID: userId }, { assignedTo: userId }], 
+            $or: [{ creatorId: userId }, { assignedTo: userId }], 
             ...filters 
         };
-        return await TodoModel.find(query).sort(sortBy).populate('assignedTo', 'name email');
+        return await TaskModel.find(query).sort(sortBy).populate('assignedTo', 'name email');
     }
 
     async findById(taskId) {
-        return await TodoModel.findById(taskId);
+        return await TaskModel.findById(taskId);
     }
 
-    async delete(taskId, userId) {
-        return await TodoModel.deleteOne({ _id: taskId, userID: userId });
+    async delete(taskId) {
+        return await TaskModel.deleteOne({ _id: taskId });
     }
 
+   
     async update(taskId, updateData) {
-        return await TodoModel.findByIdAndUpdate(taskId, updateData, { new: true });
+        return await TaskModel.findByIdAndUpdate(taskId, updateData, { new: true });
+    }
+
+
+    async addAssignee(taskId, userId) {
+        return await TaskModel.findByIdAndUpdate(
+            taskId,
+            { $addToSet: { assignedTo: userId } }, 
+            { new: true }
+        );
     }
 }
 

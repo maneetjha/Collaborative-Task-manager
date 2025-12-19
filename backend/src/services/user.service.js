@@ -13,6 +13,7 @@ class UserService {
         }
 
         const hashedPassword = await bcrypt.hash(password, 5); 
+        
         return await userRepository.create({
             name,
             email,

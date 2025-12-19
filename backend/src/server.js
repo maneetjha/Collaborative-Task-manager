@@ -4,30 +4,50 @@ const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const cors = require('cors');
 
+// 1. Import Routes
+const userRoutes = require('./routes/user.routes');
+const taskRoutes = require('./routes/task.routes'); 
+
+
+// 2. Import Socket Utility Logic
+const { init, userSockets } = require('./utils/socket.util'); 
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 const MONGO_URL = process.env.MONGO_URL;
 
 const app = express();
 const server = http.createServer(app); 
 
 
-app.use(express.json()); 
 
 
+// 3. Initialize Socket.io
 const io = new Server(server, {
     cors: { origin: "*" } 
 });
 
-// Store mapping: Key = UserID (string), Value = SocketID (string)
-// This is used to store the mapping of userID to socketID
-//This aassumes that frontend does reconnection on error.
-const userSockets = new Map(); 
+init(io);
 
 
 
+// 4. Global Middlewares
+app.use(cors());
+app.use(express.json()); 
+
+
+
+
+// 5. Connect Routes
+app.use('/api/users', userRoutes);
+app.use('/api/tasks', taskRoutes);
+
+
+
+
+// 6. Database Connection
 mongoose.connect(MONGO_URL)
     .then(() => console.log('📦 Connected to MongoDB Successfully'))
     .catch(err => {
@@ -36,8 +56,15 @@ mongoose.connect(MONGO_URL)
     });
 
 
+
+
+// 7. Socket.io Authentication Middleware
 io.use((socket, next) => {
-    const token = socket.handshake.auth.token; 
+    const token = 
+        socket.handshake.headers.token || 
+        socket.handshake.headers.authorization?.split(' ')[1] || 
+        socket.handshake.auth.token;
+        
     if (!token) {
         return next(new Error("Authentication error: No token provided"));
     }
@@ -50,21 +77,27 @@ io.use((socket, next) => {
     }
 });
 
+
+
+
+// 8. Socket.io Connection Logic
 io.on('connection', (socket) => {
-    userSockets.set(socket.userId, socket.id);
+    // Save user to the shared Map in socket.util
+    userSockets.set(socket.userId.toString(), socket.id);
     console.log(`✅ User connected: ${socket.userId} (Socket: ${socket.id})`);
 
-    socket.on('disconnect', (reason) => {
-        userSockets.delete(socket.userId);
-        console.log(`❌ User disconnected: ${socket.userId} (${reason})`);
+    socket.on('disconnect', () => {
+        userSockets.delete(socket.userId.toString());
+        console.log(`❌ User disconnected: ${socket.userId}`);
     });
 });
 
 
+
+// 9. Health Check & Server Start
 app.get('/', (req, res) => {
     res.send('Server is up and running!');
 });
-
 
 server.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
@@ -72,4 +105,4 @@ server.listen(PORT, () => {
 });
 
 
-module.exports = { app, server, io, userSockets };
+module.exports = { app, server };

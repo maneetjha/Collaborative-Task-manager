@@ -21,24 +21,51 @@ class TaskController {
 
     async assignTask(req, res) {
         try {
-            const { taskId, targetUserId } = req.body;
+            // taskId comes from the URL (:taskId)
+            // targetUserId comes from the JSON body
+            const { taskId } = req.params; 
+            const { targetUserId } = req.body;
+            const requesterId = req.userid;
+
+            if (!taskId || !targetUserId) {
+                return res.status(400).json({ message: "taskId and targetUserId are required" });
+            }
+    
+           
+            const result = await taskService.assignTask(taskId, targetUserId, requesterId);
             
-            // We call the Service here
-            const updatedTask = await taskService.assignTask(taskId, targetUserId);
-            
-            res.json({ message: "Task assigned successfully", task: updatedTask });
+            if (result.alreadyAssigned) {
+                return res.status(200).json({ 
+                    message: result.message 
+                });
+            }
+    
+            res.json({ 
+                message: "Task assigned successfully", 
+                task: result.task 
+            });
+
         } catch (error) {
-            res.status(400).json({ message: error.message });
+            const statusCode = error.message.includes("authorized") ? 403 : 400;
+            res.status(statusCode).json({ message: error.message });
         }
     }
 
     async deleteTask(req, res) {
         try {
-            const { todoid } = req.body;
-            await taskService.removeTask(todoid, req.userid);
-            res.json({ message: "Deleted successfully" });
+            const { taskId } = req.params;
+            const requesterId = req.userid; 
+    
+            if (!taskId) {
+                return res.status(400).json({ message: "taskId is required in the request body" });
+            }
+
+            await taskService.removeTask(taskId, requesterId);
+            
+            res.json({ message: "Task deleted successfully" });
         } catch (error) {
-            res.status(404).json({ message: error.message });
+            const statusCode = error.message.includes("authorized") ? 403 : 404;
+            res.status(statusCode).json({ message: error.message });
         }
     }
 }

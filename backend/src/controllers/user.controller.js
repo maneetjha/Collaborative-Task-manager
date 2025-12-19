@@ -20,6 +20,7 @@ class UserController {
             const { name, email, password } = req.body;
             await userService.registerUser(name, email, password);
             
+            
             res.status(201).json({ msg: "User registered successfully" });
 
         } catch (error) {

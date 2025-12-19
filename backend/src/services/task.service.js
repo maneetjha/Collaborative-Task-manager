@@ -1,8 +1,10 @@
 const taskRepository = require("../repositories/task.repository");
+const userRepository = require("../repositories/user.repository");
 const { notifyUser, broadcastUpdate } = require("../utils/socket.util");
 
 class TaskService {
-    // 1. Create Task + Broadcast to everyone online
+
+    
     async createNewTask(data, userId) {
         const taskPayload = {
             title: data.todo || data.title, 
@@ -10,54 +12,99 @@ class TaskService {
             status: data.status || 'To-Do',
             priority: data.priority || 'Medium',
             dueDate: data.dueDate,
-            userID: userId
+            creatorId: userId
         };
         
         const newTask = await taskRepository.create(taskPayload);
         
-        // Notify all users that a new task exists for the dashboard
+    
         broadcastUpdate('TASK_CREATED', newTask);
         
         return newTask;
     }
 
-    // 2. Updated to support Filtering and Sorting (Required for Dashboard)
+
+   
     async getAllTasks(userId, filters = {}, sortBy = 'dueDate') {
-        // Build the sort object (e.g., { dueDate: 1 })
+        
         const sortOptions = {};
         sortOptions[sortBy] = 1; 
 
         return await taskRepository.findByUserId(userId, filters, sortOptions);
     }
 
-    // 3. Assign Task + Private Notification
-    async assignTask(taskId, targetUserId) {
-        const updatedTask = await taskRepository.update(taskId, { assignedTo: targetUserId });
 
-        if (!updatedTask) throw new Error("Task not found");
 
-        // Targeted notification to the assignee
-        notifyUser(targetUserId, 'TASK_ASSIGNED', {
-            message: `You have been assigned a new task: ${updatedTask.title}`,
-            taskId: updatedTask._id
-        });
 
-        // Broadcast update so others see the "Assignee" label change
-        broadcastUpdate('TASK_UPDATED', updatedTask);
+    async assignTask(taskId, targetUserId, requesterId) {
+  
+        const task = await taskRepository.findById(taskId);
+        if (!task) throw new Error("Task not found");
 
-        return updatedTask;
-    }
+        const requester = await userRepository.findById(requesterId);
+        const requesterName = requester.name;
+    
 
-    async removeTask(taskId, userId) {
-        const result = await taskRepository.delete(taskId, userId);
-        if (result.deletedCount === 0) {
-            throw new Error("Task not found or unauthorized");
+        if (task.creatorId.toString() !== requesterId.toString()) {
+            throw new Error("You are not authorized to assign this task");
         }
 
-        // Notify everyone that a task was removed
-        broadcastUpdate('TASK_REMOVED', { taskId });
+        const targetUser = await userRepository.findById(targetUserId);
+        if (!targetUser) {
+            throw new Error("Target user does not exist. Assignment failed.");
+        }
+    
+      
+        const isAlreadyAssigned = task.assignedTo.some(id => id.toString() === targetUserId.toString());
+
+        if (!isAlreadyAssigned) {
+            
+            const updatedTask = await taskRepository.addAssignee(taskId, targetUserId);
+
+            
+            notifyUser(targetUserId, 'TASK_ASSIGNED', {
+                message: `You have been added to task: ${updatedTask.title}`,
+                taskId: updatedTask._id,
+                assignedBy: requesterName
+            });
+
+            broadcastUpdate('TASK_UPDATED', updatedTask);
+            
+            return { 
+                task: updatedTask, 
+                alreadyAssigned: false, 
+                message: "Task assigned successfully" 
+            };
+        }
         
-        return result;
+        return { 
+            task: task, 
+            alreadyAssigned: true, 
+            message: "User was already part of this task" 
+        };
+    
+    }
+    
+
+    async removeTask(taskId, requesterId) {
+        const task = await taskRepository.findById(taskId);
+        
+        if (!task) {
+            throw new Error("Task not found");
+        }
+    
+        if (task.creatorId.toString() !== requesterId.toString()) {
+            throw new Error("You are not authorized to delete this task");
+        }
+    
+        
+        await taskRepository.delete(taskId);
+    
+     
+        const { broadcastUpdate } = require('../utils/socket.util');
+        broadcastUpdate('TASK_DELETED', { taskId });
+    
+        return true;
     }
 }
 

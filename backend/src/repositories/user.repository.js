@@ -1,4 +1,4 @@
-const { UserModel } = require("../models/task");
+const UserModel = require("../models/user.model");
 
 class UserRepository {
     async findByEmail(email) {
