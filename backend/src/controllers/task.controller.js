@@ -19,6 +19,19 @@ class TaskController {
         }
     }
 
+    async assignTask(req, res) {
+        try {
+            const { taskId, targetUserId } = req.body;
+            
+            // We call the Service here
+            const updatedTask = await taskService.assignTask(taskId, targetUserId);
+            
+            res.json({ message: "Task assigned successfully", task: updatedTask });
+        } catch (error) {
+            res.status(400).json({ message: error.message });
+        }
+    }
+
     async deleteTask(req, res) {
         try {
             const { todoid } = req.body;
