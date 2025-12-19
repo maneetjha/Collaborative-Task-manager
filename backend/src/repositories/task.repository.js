@@ -5,9 +5,12 @@ class TaskRepository {
         return await TodoModel.create(taskData);
     }
 
-    async findByUserId(userId) {
-        // Populating 'assignedTo' for the collaboration requirement
-        return await TodoModel.find({ userID: userId }).populate('assignedTo', 'name email');
+    async findByUserId(userId, filters = {}, sortBy = { dueDate: 1 }) {
+        const query = { 
+            $or: [{ userID: userId }, { assignedTo: userId }], 
+            ...filters 
+        };
+        return await TodoModel.find(query).sort(sortBy).populate('assignedTo', 'name email');
     }
 
     async findById(taskId) {
