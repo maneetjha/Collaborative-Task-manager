@@ -14,6 +14,7 @@ router.delete('/:taskId', taskController.deleteTask);
 router.get('/created',  taskController.getCreatedTasks);
 router.get('/assigned',  taskController.getAssignedTasks);
 router.get('/overdue',  taskController.getOverdueTasks);
+router.get('/:id', taskController.getTaskById);
 router.patch('/:id', taskController.updateTask);
 
 module.exports = router;

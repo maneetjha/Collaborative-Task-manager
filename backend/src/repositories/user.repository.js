@@ -12,6 +12,22 @@ class UserRepository {
     async create(userData) {
         return await UserModel.create(userData);
     }
+
+    async findAll() {
+        return await UserModel.find({}, 'name email _id'); 
+    }
+
+    async findById(userId) {
+        return await UserModel.findById(userId).select('-password');
+    }
+
+    async update(userId, updateData) {
+        return await UserModel.findByIdAndUpdate(
+            userId,
+            updateData,
+            { new: true, runValidators: true }
+        ).select('-password');
+    }
 }
 
 module.exports = new UserRepository();

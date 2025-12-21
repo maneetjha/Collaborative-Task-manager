@@ -51,6 +51,20 @@ class TaskService {
         return await taskRepository.findTasks(filters, this._buildSort(query));
     }
 
+    async getTaskById(taskId, userId) {
+        const task = await taskRepository.findById(taskId);
+        if (!task) {
+            throw new Error('Task not found');
+        }
+        // Check if user has access (creator or assignee)
+        const creatorId = task.creatorId.toString();
+        const assignedToIds = task.assignedTo.map(id => id.toString());
+        if (creatorId !== userId && !assignedToIds.includes(userId)) {
+            throw new Error('You do not have access to this task');
+        }
+        return task;
+    }
+
     _buildFilters(query) {
         const filter = {};
         if (query.status) filter.status = query.status;

@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.skeleton {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 50%, #e5e7eb 100%);
+  background-size: 1000px 100%;
+}
+
+/* Hide TanStack React Query DevTools on mobile */
+@media (max-width: 768px) {
+  .tsqd-panel-container,
+  .tsqd-open-btn,
+  button[aria-label*="React Query"],
+  button[aria-label*="TanStack"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+}

@@ -39,6 +39,18 @@ class TaskController {
         }
     }
 
+    async getTaskById(req, res) {
+        try {
+            const { id } = req.params;
+            const task = await taskService.getTaskById(id, req.userid);
+            res.json(task);
+        } catch (error) {
+            const statusCode = error.message.includes('not found') ? 404 : 
+                             error.message.includes('access') ? 403 : 500;
+            res.status(statusCode).json({ message: error.message });
+        }
+    }
+
     async assignTask(req, res) {
         try {
             // taskId comes from the URL (:taskId)

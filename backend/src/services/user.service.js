@@ -38,6 +38,37 @@ class UserService {
         const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '24h' });
         return { token, user: { id: user._id, name: user.name, email: user.email } };
     }
+
+    async getAllUsers() {
+        return await userRepository.findAll();
+    }
+
+
+    async getUserProfile(userId) {
+        const user = await userRepository.findById(userId);
+        if (!user) {
+            throw new Error('User not found');
+        }
+        return user;
+    }
+
+    async updateUserProfile(userId, updateData) {
+        const user = await userRepository.findById(userId);
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Check if email is being changed and if it already exists
+        if (updateData.email && updateData.email !== user.email) {
+            const existingUser = await userRepository.findByEmail(updateData.email);
+            if (existingUser) {
+                throw new Error('Email already exists');
+            }
+        }
+
+        const updatedUser = await userRepository.update(userId, updateData);
+        return updatedUser;
+    }
 }
 
 module.exports = new UserService();
