@@ -25,8 +25,17 @@ const server = http.createServer(app);
 
 
 // 3. Initialize Socket.io
+// Allow all origins in production (you can restrict this to your Vercel URL later)
+const allowedOrigins = process.env.FRONTEND_URL 
+    ? process.env.FRONTEND_URL.split(',') 
+    : '*';
+
 const io = new Server(server, {
-    cors: { origin: "*" } 
+    cors: { 
+        origin: allowedOrigins,
+        methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+        credentials: true
+    } 
 });
 
 init(io);
@@ -34,7 +43,13 @@ init(io);
 
 
 // 4. Global Middlewares
-app.use(cors());
+// CORS configuration for production
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'token']
+}));
 app.use(express.json()); 
 
 
