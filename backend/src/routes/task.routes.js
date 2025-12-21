@@ -7,8 +7,13 @@ const auth = require('../middleware/authentication');
 router.use(auth); 
 
 router.post('/', taskController.createTask);
-router.get('/', taskController.getTasks);
 router.patch('/assign/:taskId', taskController.assignTask);
 router.delete('/:taskId', taskController.deleteTask);
+
+
+router.get('/created',  taskController.getCreatedTasks);
+router.get('/assigned',  taskController.getAssignedTasks);
+router.get('/overdue',  taskController.getOverdueTasks);
+router.patch('/:id', taskController.updateTask);
 
 module.exports = router;

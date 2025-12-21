@@ -1,4 +1,5 @@
 const taskService = require("../services/task.service");
+const { notifyUser, broadcastUpdate } = require("../utils/socket.util");
 
 class TaskController {
     async createTask(req, res) {
@@ -10,12 +11,31 @@ class TaskController {
         }
     }
 
-    async getTasks(req, res) {
+    async getCreatedTasks(req, res) {
         try {
-            const tasks = await taskService.getAllTasks(req.userid);
-            res.json({ tasks });
+            const tasks = await taskService.getCreatedTasks(req.userid, req.query); 
+            res.json({ message: "Created tasks retrieved", tasks });
         } catch (error) {
-            res.status(500).json({ message: "Error fetching tasks" });
+            res.status(500).json({ message: error.message });
+        }
+    }
+    
+    async getAssignedTasks(req, res) {
+        try {
+            const tasks = await taskService.getAssignedTasks(req.userid, req.query);
+            res.json({ message: "Assigned tasks retrieved", tasks });
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    }
+
+
+    async getOverdueTasks(req, res) {
+        try {
+            const tasks = await taskService.getOverdueTasks(req.userid, req.query);
+            res.json({ count: tasks.length, tasks });
+        } catch (error) {
+            res.status(500).json({ message: error.message });
         }
     }
 
@@ -48,6 +68,30 @@ class TaskController {
         } catch (error) {
             const statusCode = error.message.includes("authorized") ? 403 : 400;
             res.status(statusCode).json({ message: error.message });
+        }
+    }
+
+
+    async updateTask(req, res) {
+        try {
+            const { id } = req.params;
+            const updatedTask = await taskService.updateTask(id, req.userid, req.body);
+    
+            
+            broadcastUpdate('TASK_UPDATED', updatedTask);
+    
+           
+            if (req.body.status === 'Completed') {
+                notifyUser(updatedTask.creatorId, 'TASK_FINISHED', {
+                    message: `Task "${updatedTask.title}" has been completed!`,
+                    taskId: updatedTask._id
+                });
+            }
+    
+            res.json({ message: "Task updated successfully", task: updatedTask });
+            
+        } catch (error) {
+            res.status(403).json({ message: error.message });
         }
     }
 

@@ -25,12 +25,41 @@ class TaskService {
 
 
    
-    async getAllTasks(userId, filters = {}, sortBy = 'dueDate') {
-        
-        const sortOptions = {};
-        sortOptions[sortBy] = 1; 
+    async getCreatedTasks(userId, query) {
+        const filters = { creatorId: userId, ...this._buildFilters(query) };
+        return await taskRepository.findTasks(filters, this._buildSort(query));
+    }
+    
+  
+    async getAssignedTasks(userId, query) {
+        const filters = { 
+            assignedTo: userId, 
+            creatorId: { $ne: userId }, 
+            ...this._buildFilters(query) 
+        };
+        return await taskRepository.findTasks(filters, this._buildSort(query));
+    }
+    
+    
+    async getOverdueTasks(userId, query) {
+        const filters = {
+            $or: [{ creatorId: userId }, { assignedTo: userId }],
+            dueDate: { $lt: new Date() }, 
+            status: { $ne: 'Completed' }, 
+            ...this._buildFilters(query)
+        };
+        return await taskRepository.findTasks(filters, this._buildSort(query));
+    }
 
-        return await taskRepository.findByUserId(userId, filters, sortOptions);
+    _buildFilters(query) {
+        const filter = {};
+        if (query.status) filter.status = query.status;
+        if (query.priority) filter.priority = query.priority;
+        return filter;
+    }
+
+    _buildSort(query) {
+        return { dueDate: query.order === 'desc' ? -1 : 1 };
     }
 
 
@@ -83,6 +112,45 @@ class TaskService {
             message: "User was already part of this task" 
         };
     
+    }
+
+
+    async updateTask(taskId, userId, updateData) {
+        const task = await taskRepository.findById(taskId);
+        if (!task) throw new Error("Task not found");
+    
+        const isCreator = task.creatorId.toString() === userId.toString();
+        const isAssignee = task.assignedTo.some(id => id.toString() === userId.toString());
+    
+        if (!isCreator && !isAssignee) {
+            throw new Error("Not authorized to access this task");
+        }
+    
+        //ROLE-BASED RESTRICTION
+        
+        if (!isCreator && isAssignee) {
+            const allowedFields = ['status'];
+            const filteredUpdate = {};
+    
+            allowedFields.forEach(field => {
+                if (updateData[field] !== undefined) {
+                    filteredUpdate[field] = updateData[field];
+                }
+            });
+    
+           
+            const attemptedFields = Object.keys(updateData);
+            const hasForbiddenFields = attemptedFields.some(field => !allowedFields.includes(field));
+    
+            if (hasForbiddenFields) {
+                throw new Error("Assignees can only update the status of a task.");
+            }
+    
+            return await taskRepository.update(taskId, filteredUpdate);
+        }
+    
+        // If they are the creator, they can update everything
+        return await taskRepository.update(taskId, updateData);
     }
     
 
