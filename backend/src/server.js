@@ -25,16 +25,32 @@ const server = http.createServer(app);
 
 
 // 3. Initialize Socket.io
-// Allow all origins in production (you can restrict this to your Vercel URL later)
+// CORS configuration - allow Vercel frontend and localhost for development
+const defaultOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://collaborative-task-manager-swart.vercel.app'
+];
+
 const allowedOrigins = process.env.FRONTEND_URL 
-    ? process.env.FRONTEND_URL.split(',') 
-    : '*';
+    ? [...defaultOrigins, ...process.env.FRONTEND_URL.split(',').map(url => url.trim())]
+    : defaultOrigins;
 
 const io = new Server(server, {
     cors: { 
-        origin: allowedOrigins,
-        methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-        credentials: true
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+            
+            if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+        credentials: true,
+        allowedHeaders: ['Content-Type', 'Authorization', 'token']
     } 
 });
 
@@ -44,12 +60,30 @@ init(io);
 
 // 4. Global Middlewares
 // CORS configuration for production
-app.use(cors({
-    origin: allowedOrigins,
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log(`CORS blocked origin: ${origin}`);
+            console.log(`Allowed origins: ${JSON.stringify(allowedOrigins)}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'token']
-}));
+    allowedHeaders: ['Content-Type', 'Authorization', 'token'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 app.use(express.json()); 
 
 

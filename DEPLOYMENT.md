@@ -150,7 +150,9 @@ If you prefer using the `render.yaml` file:
 
 ## 🔄 Step 4: Update Backend CORS (Important!)
 
-After deploying the frontend, you need to update the backend to allow requests from your Vercel URL:
+After deploying the frontend, you need to ensure the backend allows requests from your Vercel URL:
+
+**Option 1: Using Environment Variable (Recommended)**
 
 1. **Go back to Render Dashboard**
 
@@ -171,6 +173,15 @@ After deploying the frontend, you need to update the backend to allow requests f
    ```
    FRONTEND_URL=https://your-project-name.vercel.app,https://your-project-name-git-main.vercel.app
    ```
+
+3. **Redeploy the backend** (Render will auto-redeploy when you save environment variables)
+
+**Option 2: Code Update (Already Done)**
+
+The backend code now includes the Vercel URL (`https://collaborative-task-manager-swart.vercel.app`) by default. If your Vercel URL is different, you can either:
+
+- Update the `defaultOrigins` array in `backend/src/server.js`
+- Or use the `FRONTEND_URL` environment variable (Option 1)
 
 3. **Redeploy**
    - After updating the environment variable, Render will automatically redeploy
