@@ -31,7 +31,7 @@ const useProfile = () => {
 // Update profile mutation
 const useUpdateProfile = () => {
   const queryClient = useQueryClient();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
 
   return useMutation({
     mutationFn: async (data: ProfileFormData) => {
